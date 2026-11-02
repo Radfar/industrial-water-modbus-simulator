@@ -2,6 +2,8 @@
 
 import unittest
 
+from pymodbus.simulator.simcore import SimCore
+
 from src.modbus_server import build_device
 from src.process_model import WaterProcessModel
 from src.register_map import (
@@ -113,6 +115,33 @@ class Zone01RuntimeTests(unittest.TestCase):
         recovered_state = self.runtime.scan()
         self.assertTrue(recovered_state.permissive)
         self.assertFalse(recovered_state.running)
+
+    def test_runtime_uses_active_pymodbus_memory_when_attached(self):
+        # SimCore represents the memory PyModbus actually serves. It builds
+        # packed register arrays from SimData, rather than sharing its lists.
+        active_device = SimCore([self.device]).devices[1]
+        runtime = Zone01Runtime(self.device, datastore=active_device)
+
+        runtime.scan()
+        discrete_registers = active_device.block["d"][2]
+        self.assertTrue(discrete_registers[0] & (1 << DiscreteInputAddress.Z01_MANUAL))
+
+        runtime.coils[CoilAddress.Z01_START] = True
+        state = runtime.scan()
+
+        self.assertTrue(state.running)
+        coil_registers = active_device.block["c"][2]
+        self.assertFalse(coil_registers[0] & (1 << CoilAddress.Z01_START))
+        self.assertTrue(
+            discrete_registers[0] & (1 << DiscreteInputAddress.Z01_RUNNING)
+        )
+        input_registers = active_device.block["i"][2]
+        self.assertEqual(
+            input_registers[InputRegisterAddress.Z01_FLOW], 900
+        )
+        self.assertEqual(
+            input_registers[InputRegisterAddress.Z01_PUMP_FREQUENCY], 450
+        )
 
     def test_external_permissive_loss_blocks_start(self):
         di = self.device.simdata[1][0].values
