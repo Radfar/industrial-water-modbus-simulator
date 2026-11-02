@@ -95,7 +95,9 @@ class Zone01RuntimeTests(unittest.TestCase):
 
         self.assertFalse(state.running)
         self.assertFalse(state.permissive)
-        self.assertFalse(
+        # The external permissive input remains true; setpoint validity is
+        # an additional internal condition and does not overwrite that input.
+        self.assertTrue(
             self.device.simdata[1][0].values[
                 DiscreteInputAddress.Z01_PERMISSIVE
             ]
