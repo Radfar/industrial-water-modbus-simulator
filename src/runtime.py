@@ -100,10 +100,16 @@ class Zone01Runtime:
         if not 0.0 < elapsed <= 60.0:
             raise ValueError("elapsed_seconds must be greater than zero and <= 60")
 
+        setpoints_valid, frequency_sp, valve_sp, setpoints = self._read_setpoints()
+
         commands = ControlCommands(
             auto_selected=bool(self.coils[CoilAddress.Z01_AUTO]),
             start_request=bool(self.coils[CoilAddress.Z01_START]),
-            stop_request=bool(self.coils[CoilAddress.Z01_STOP]),
+            # Treat invalid setpoints as a stop request so a previously
+            # latched demand cannot unexpectedly restart when corrected.
+            stop_request=(
+                bool(self.coils[CoilAddress.Z01_STOP]) or not setpoints_valid
+            ),
             fault_reset_request=bool(self.coils[CoilAddress.Z01_FAULT_RESET]),
         )
 
@@ -111,8 +117,6 @@ class Zone01Runtime:
         self.coils[CoilAddress.Z01_START] = False
         self.coils[CoilAddress.Z01_STOP] = False
         self.coils[CoilAddress.Z01_FAULT_RESET] = False
-
-        setpoints_valid, frequency_sp, valve_sp, setpoints = self._read_setpoints()
         external_permissive = bool(
             self.discrete_inputs[DiscreteInputAddress.Z01_PERMISSIVE]
         )
