@@ -107,6 +107,13 @@ class Zone01RuntimeTests(unittest.TestCase):
             0,
         )
 
+        # Correcting the setpoint restores the effective permissive; the
+        # external permissive input was not overwritten by the earlier fault.
+        holding[HoldingRegisterAddress.Z01_PUMP_SPEED_SP] = 450
+        recovered_state = self.runtime.scan()
+        self.assertTrue(recovered_state.permissive)
+        self.assertFalse(recovered_state.running)
+
     def test_external_permissive_loss_blocks_start(self):
         di = self.device.simdata[1][0].values
         di[DiscreteInputAddress.Z01_PERMISSIVE] = False
