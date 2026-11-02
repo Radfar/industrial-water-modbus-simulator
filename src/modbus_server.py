@@ -5,6 +5,8 @@ import asyncio
 from pymodbus.server import ModbusTcpServer
 from pymodbus.simulator import DataType, SimData, SimDevice
 
+from .runtime import Zone01Runtime
+
 from .register_map import (
     MODBUS_TCP_PORT,
     MODBUS_UNIT_ID,
@@ -84,7 +86,18 @@ async def run_server(host: str = "127.0.0.1", port: int = MODBUS_TCP_PORT) -> No
     print(f"Unit ID: {MODBUS_UNIT_ID}")
     print("Press Ctrl+C to stop the server.")
 
-    await server.serve_forever()
+    runtime = Zone01Runtime(device)
+    runtime_task = asyncio.create_task(runtime.run())
+    print("Zone 01 process simulation running (500 ms nominal scan).")
+
+    try:
+        await server.serve_forever()
+    finally:
+        runtime_task.cancel()
+        try:
+            await runtime_task
+        except asyncio.CancelledError:
+            pass
 
 
 def main() -> None:
