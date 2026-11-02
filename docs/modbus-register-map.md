@@ -70,7 +70,7 @@ Discrete inputs are read-only Boolean values.
 | 11 | 10012 | `Z01_TANK_HIGH` | Tank high-level condition |
 | 12 | 10013 | `Z01_VALVE_OPEN_FB` | Valve-open status derived from simulated position |
 
-At startup, `Z01_PERMISSIVE` is initialized true. The runtime then publishes calculated status on each scan. `RUN_FEEDBACK` is derived from simulated pump frequency greater than zero; it is not independent physical feedback. The `PERMISSIVE` status represents the external permissive combined with setpoint validity.
+At startup, `Z01_PERMISSIVE` is initialized true. The runtime then publishes calculated status on each scan. `RUN_FEEDBACK` is derived from simulated pump frequency greater than zero; it is not independent physical feedback. The `PERMISSIVE` reports the external permissive input. Setpoint validity is evaluated separately as an additional internal run condition; invalid setpoints block operation and make `PROCESS_OK` false without overwriting the external permissive point.
 
 `COMM_OK` is intentionally not included as a device process bit. Communication availability and data freshness should be determined by each client from connection and polling behavior. `PROCESS_OK` is not a substitute for communication health.
 
