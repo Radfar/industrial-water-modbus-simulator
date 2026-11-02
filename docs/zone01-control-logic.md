@@ -98,7 +98,6 @@ The caller supplies process measurements, permissive state, external pump-fault 
 - No start-delay, minimum-run-time, minimum-stop-time, or VFD ramp is implemented.
 - No source-low condition exists in the current register map.
 - No independent physical run feedback is available. In the integrated simulator, RUN_FEEDBACK is derived from the simulated pump frequency being greater than zero; it is not independent proof from a motor contactor or VFD status input.
-- The runtime validates setpoints against the current simulation ranges (pump frequency 0–50 Hz, valve 0–100%, low-flow threshold 0–100 L/min, and tank thresholds 0–100% with low below high). Invalid setpoints remove the effective permissive and force the simulated pump output off.
+- The runtime validates setpoints against the current simulation ranges (pump frequency 0–50 Hz, valve 0–100%, low-flow threshold 0–100 L/min, and tank thresholds 0–100% with low below high). Invalid setpoints remove the effective permissive and force the simulated pump output off. In Manual, the invalid setpoint also clears the latched manual run request, so a fresh START is required after correction. In Auto, the level-based demand is retained and can resume when the setpoints become valid.
 - The runtime reads the external permissive from the read-only DI memory location. No external pump-fault input is currently mapped; the pump-fault latch remains available for later integration.
-- Setpoint validation currently enforces numeric ranges and low threshold below high threshold. Site-specific engineering limits remain to be defined.
 - This is a simulation control philosophy, not a validated safety or protection function.
