@@ -163,10 +163,18 @@ class CommandProcessorTests(unittest.TestCase):
             ControlCommands(fault_reset_request=True),
             pump_fault_condition=False,
         )
-        # Releasing and pressing again creates a new reset edge.
-        self.update(ControlCommands(fault_reset_request=True))
-        state = self.update(ControlCommands(fault_reset_request=False))
-        self.assertFalse(state.fault)
+        # A new fault while RESET remains held cannot be cleared without
+        # releasing RESET and generating another rising edge.
+        state = self.update(
+            ControlCommands(fault_reset_request=True),
+            pump_fault_condition=True,
+        )
+        self.assertTrue(state.fault)
+        state = self.update(
+            ControlCommands(fault_reset_request=True),
+            pump_fault_condition=False,
+        )
+        self.assertTrue(state.fault)
 
     def test_invalid_tank_level_is_rejected(self):
         with self.assertRaises(ValueError):
