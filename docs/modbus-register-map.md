@@ -88,7 +88,7 @@ Holding registers are read/write unsigned 16-bit values. Analog setpoints use a 
 
 Initial values are 45.0 Hz, 100.0%, 5.0 L/min, 20.0%, and 90.0%, respectively. These values are startup defaults, not validated operating recommendations.
 
-The runtime validates these operating ranges: pump frequency 0–50 Hz, valve position 0–100%, low-flow threshold 0–100 L/min, and tank thresholds 0–100% with low below high. Invalid values remove the effective permissive and force the simulated pump output off. A Modbus register write alone does not bypass process validation.
+The runtime validates these operating ranges: pump frequency 0–50 Hz, valve position 0–100%, low-flow threshold 0–100 L/min, and tank thresholds 0–100% with low below high. Invalid values remove the effective permissive and force the simulated pump output off. In Manual, invalid setpoints also clear the latched manual run request, requiring a fresh START after correction; Auto retains its level-based demand. A Modbus register write alone does not bypass process validation.
 
 ## 7. Input registers — process measurements (3xxxx)
 
