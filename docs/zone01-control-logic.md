@@ -29,6 +29,7 @@ Automatic mode is selected when AUTO is true.
 - At or below the low-level setpoint (default 20%), automatic demand is set.
 - At or above the high-level setpoint (default 90%), automatic demand is cleared.
 - Between the thresholds, the previous automatic demand is retained. This is hysteresis.
+- An operator STOP at low level inhibits automatic restart until the tank level rises above the low-level setpoint. The next low-level crossing can then initiate a new automatic run.
 - Switching to Auto clears the manual run request.
 - Switching to Manual clears the automatic run request. A new manual START is required.
 
@@ -59,7 +60,7 @@ An asserted external pump-fault condition latches the pump-fault status. The lat
 
 ### Fault reset
 
-FAULT_RESET is edge-detected. A reset is accepted only when the external pump-fault condition is false and measured flow is at or above the low-flow setpoint. This prevents clearing a low-flow trip while the low-flow condition remains.
+FAULT_RESET is edge-detected. A reset is accepted when the external pump-fault condition is false. A low-flow trip stops the pump, so measured flow is expected to fall to zero; requiring flow recovery would make the trip impossible to reset while stopped.
 
 A reset clears the fault latch but does not create a run request. The operator or automatic sequence must establish a new valid demand.
 
@@ -96,6 +97,8 @@ The caller supplies process measurements, permissive state, external pump-fault 
 - Default low-flow trip delay is 3 seconds.
 - No start-delay, minimum-run-time, minimum-stop-time, or VFD ramp is implemented.
 - No source-low condition exists in the current register map.
-- No physical run feedback is available; RUNNING is the internal command-processor state.
+- No independent physical run feedback is available. In the integrated simulator, RUN_FEEDBACK is derived from the simulated pump frequency being greater than zero; it is not independent proof from a motor contactor or VFD status input.
+- The runtime validates setpoints against the current simulation ranges (pump frequency 0–50 Hz, valve 0–100%, low-flow threshold 0–100 L/min, and tank thresholds 0–100% with low below high). Invalid setpoints remove the effective permissive and force the simulated pump output off.
+- The runtime reads the external permissive from the read-only DI memory location. No external pump-fault input is currently mapped; the pump-fault latch remains available for later integration.
 - Setpoint validation currently enforces numeric ranges and low threshold below high threshold. Site-specific engineering limits remain to be defined.
 - This is a simulation control philosophy, not a validated safety or protection function.
