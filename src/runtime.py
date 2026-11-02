@@ -105,10 +105,12 @@ class Zone01Runtime:
         commands = ControlCommands(
             auto_selected=bool(self.coils[CoilAddress.Z01_AUTO]),
             start_request=bool(self.coils[CoilAddress.Z01_START]),
-            # Treat invalid setpoints as a stop request so a previously
-            # latched demand cannot unexpectedly restart when corrected.
+            # In Manual, invalid setpoints clear the latched manual request,
+            # requiring a fresh START after correction. Auto retains its
+            # level-based demand and remains governed by its hysteresis logic.
             stop_request=(
-                bool(self.coils[CoilAddress.Z01_STOP]) or not setpoints_valid
+                bool(self.coils[CoilAddress.Z01_STOP])
+                or (not setpoints_valid and not bool(self.coils[CoilAddress.Z01_AUTO]))
             ),
             fault_reset_request=bool(self.coils[CoilAddress.Z01_FAULT_RESET]),
         )
