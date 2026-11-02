@@ -2,19 +2,21 @@
 
 A Python-based Modbus TCP device and water-process simulator for the Industrial Water Management testbed.
 
-This repository hosts an independent simulated field device. Zone 01 models a pump transferring water through a control valve into a storage tank. The Modbus TCP interface is intended for independent clients such as the Node.js Web SCADA and Ignition.
+Zone 01 models a pump transferring water through a control valve into a storage tank. The simulated field device exposes commands, setpoints, status, and process measurements to independent clients such as the Node.js Web SCADA and Ignition.
 
 ## Current status
 
-**Milestone 1 complete:** initial Modbus register map and scaling helpers defined.
+- **Milestone 1 — Register map:** complete.
+- **Milestone 2 — Modbus TCP server:** implemented and locally verified.
+- **Milestone 3 — Process and control integration:** implemented in the repository; the latest integrated test suite still needs to be run locally.
 
-**Milestone 2 verified:** Modbus TCP server, device memory, and client read/write checks completed locally.
+The 500 ms nominal runtime scan connects the command processor, water-process model, and Modbus memory. START, STOP, and FAULT_RESET are momentary requests consumed by the runtime. AUTO is a maintained mode selection.
 
-**Milestone 3 in progress:** standalone water-process model and command processor implemented with unit tests. Neither is yet connected to the Modbus server.
+## Documentation
 
-See:
 - [Zone 01 Modbus TCP Register Map](docs/modbus-register-map.md)
-- [Zone 01 Water Process Model](docs/zone01-process-model.md)\n- [Zone 01 Control Logic](docs/zone01-control-logic.md)
+- [Zone 01 Water Process Model](docs/zone01-process-model.md)
+- [Zone 01 Control Logic](docs/zone01-control-logic.md)
 
 ## Requirements
 
@@ -38,7 +40,7 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-## Run the Modbus TCP server
+## Run the simulator
 
 From the repository root, with the virtual environment active:
 
@@ -46,19 +48,19 @@ From the repository root, with the virtual environment active:
 python -m src.main
 ```
 
-The server listens on 127.0.0.1:1502, Unit ID 1, until Ctrl+C is pressed.
+The Modbus TCP server listens on `127.0.0.1:1502`, Unit ID `1`. The Zone 01 runtime starts with it and executes a nominal 500 ms scan. Press Ctrl+C to stop.
 
 ## Verify Modbus TCP communication
 
-Start the server in one terminal. In a second VS Code terminal, activate the same virtual environment and run:
+Start the simulator in one terminal. In a second VS Code terminal, activate the same virtual environment and run:
 
 ```powershell
 python -m src.client_check
 ```
 
-The client check reads all four Modbus data areas, toggles the Auto coil and restores it, then changes the pump-speed setpoint by one register count (0.1 Hz) and restores the original value.
+The client check reads all four Modbus data areas, toggles the AUTO coil and restores it, then changes the pump-speed setpoint by one register count (0.1 Hz) and restores the original value.
 
-Discrete inputs and input registers are read-only. Coils and holding registers are writable. The server currently stores command-coil writes; process command handling is not yet integrated.
+**Important:** the client check is a communication/write test, not a process-control test. It toggles AUTO and changes a setpoint; it does not issue START.
 
 ## Run automated tests
 
@@ -68,13 +70,20 @@ With the virtual environment active:
 python -m unittest discover -s tests -v
 ```
 
-Tests cover register-map helpers, initial device configuration, the standalone process model, and the standalone command processor. These unit tests do not require a running Modbus server.
+The suite covers:
+- Register-map definitions and scaling.
+- Modbus device configuration and access permissions.
+- Water-process model calculations.
+- Manual/automatic command processing, interlocks, and fault handling.
+- Runtime integration, command consumption, status publication, and setpoint validation.
 
-## Initial device values
+These unit tests do not require a running Modbus server.
+
+## Initial values
 
 | Signal | Initial value |
 |---|---:|
-| Permissive | True |
+| External permissive | True |
 | Tank level | 75.0% |
 | Pump speed setpoint | 45.0 Hz |
 | Valve position setpoint | 100.0% |
@@ -82,7 +91,7 @@ Tests cover register-map helpers, initial device configuration, the standalone p
 | Tank low threshold | 20.0% |
 | Tank high threshold | 90.0% |
 
-These are startup memory values. The standalone process model has its own initial state and is not yet synchronized with Modbus device memory.
+These are simulation startup defaults, not validated operating recommendations.
 
 ## Project structure
 
@@ -90,18 +99,23 @@ These are startup memory values. The standalone process model has its own initia
 industrial-water-modbus-simulator/
 ├── docs/
 │   ├── modbus-register-map.md
+│   ├── zone01-control-logic.md
 │   └── zone01-process-model.md
 ├── src/
 │   ├── __init__.py
-│   ├── client_check.py\n│   ├── command_processor.py
+│   ├── client_check.py
+│   ├── command_processor.py
 │   ├── main.py
 │   ├── modbus_server.py
 │   ├── process_model.py
-│   └── register_map.py
+│   ├── register_map.py
+│   └── runtime.py
 ├── tests/
 │   ├── __init__.py
-│   ├── test_command_processor.py\n│   ├── test_process_model.py
+│   ├── test_command_processor.py
+│   ├── test_process_model.py
 │   ├── test_register_map.py
+│   ├── test_runtime.py
 │   └── test_server.py
 ├── requirements.txt
 └── README.md
@@ -109,18 +123,20 @@ industrial-water-modbus-simulator/
 
 ## Development roadmap
 
-1. **Register map:** complete.
-2. **Modbus TCP server and client verification:** complete locally.
-3. **Standalone process model:** implemented; local test execution pending.
-4. Add command processing, automatic level control, interlocks, fault handling, and setpoint validation.
-5. Integrate the process model with the Modbus server and publish dynamic measurements/status.
+1. Register map and Modbus TCP server — implemented.
+2. Standalone water-process model — implemented.
+3. Standalone command processor — implemented.
+4. Runtime integration and dynamic Modbus updates — implemented; local verification pending.
+5. Verify live Modbus behavior with a client.
 6. Connect the simulator to the Node.js Web SCADA and Ignition as independent Modbus TCP clients.
+7. Expand the process model with additional equipment behavior and diagnostics as the testbed evolves.
 
-## Development notes
+## Engineering notes
 
-- The local virtual environment is stored in .venv/ and must not be committed.
-- Python dependencies are recorded in requirements.txt.
-- Default endpoint: 127.0.0.1:1502, Unit ID 1.
-- The register map uses zero-based Modbus PDU offsets; conventional reference numbers are documented alongside them.
-- All analog process values are simulated, not physical measurements.
-- The server binds to loopback only by default. Do not expose it to an untrusted network.
+- The process model is independent of PyModbus and the command processor.
+- The current pump model is linear and does not include a hydraulic pump curve, VFD acceleration/deceleration ramp, or tank outflow.
+- RUNNING is a controller decision. RUN_FEEDBACK is derived from the simulated pump frequency and is not independent physical feedback.
+- The current register map has no external pump-fault input. The pump-fault latch is available for future integration.
+- Analog values use unsigned 16-bit registers with a default scale factor of 10.
+- Modbus addresses in software are zero-based PDU offsets.
+- The server binds to loopback by default. Do not expose this development simulator to an untrusted network.
