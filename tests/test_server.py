@@ -58,6 +58,14 @@ class DeviceConfigurationTests(unittest.TestCase):
         self.assertEqual(coils[0].values, [False] * 4)
         self.assertTrue(discrete_inputs[0].values[3])
 
+    def test_discrete_inputs_are_read_only(self) -> None:
+        _, discrete_inputs, _, _ = self.device.simdata
+        self.assertTrue(discrete_inputs[0].readonly)
+
+    def test_input_registers_are_read_only(self) -> None:
+        _, _, _, input_registers = self.device.simdata
+        self.assertTrue(input_registers[0].readonly)
+
 
 if __name__ == "__main__":
     unittest.main()
