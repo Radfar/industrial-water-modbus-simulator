@@ -2,15 +2,19 @@
 
 A Python-based Modbus TCP device and water-process simulator for the Industrial Water Management testbed.
 
-This repository hosts an independent simulated field device. The planned process model includes a pump, control valve, flow rate, and tank level. The simulator exposes its initial register map through a Modbus TCP server so external clients such as the Node.js Web SCADA and Ignition can connect independently.
+This repository hosts an independent simulated field device. Zone 01 models a pump transferring water through a control valve into a storage tank. The Modbus TCP interface is intended for independent clients such as the Node.js Web SCADA and Ignition.
 
 ## Current status
 
 **Milestone 1 complete:** initial Modbus register map and scaling helpers defined.
 
-**Milestone 2 implemented:** Modbus TCP server and initial device memory are configured. Local client integration verification is the next task.
+**Milestone 2 verified:** Modbus TCP server, device memory, and client read/write checks completed locally.
 
-See [Zone 01 Modbus TCP Register Map](docs/modbus-register-map.md).
+**Milestone 3 in progress:** standalone water-process model implemented with unit tests. It is not yet connected to the Modbus server or command processor.
+
+See:
+- [Zone 01 Modbus TCP Register Map](docs/modbus-register-map.md)
+- [Zone 01 Water Process Model](docs/zone01-process-model.md)
 
 ## Requirements
 
@@ -42,45 +46,29 @@ From the repository root, with the virtual environment active:
 python -m src.main
 ```
 
-Expected startup message:
-
-```text
-Industrial Water Modbus Simulator
-----------------------------------
-Modbus TCP server listening on 127.0.0.1:1502
-Unit ID: 1
-Press Ctrl+C to stop the server.
-```
-
-The server remains active until you press Ctrl+C.
+The server listens on 127.0.0.1:1502, Unit ID 1, until Ctrl+C is pressed.
 
 ## Verify Modbus TCP communication
 
-Start the server in one terminal:
-
-```powershell
-python -m src.main
-```
-
-Keep it running. Open a second VS Code terminal, activate the same virtual environment, and run:
+Start the server in one terminal. In a second VS Code terminal, activate the same virtual environment and run:
 
 ```powershell
 python -m src.client_check
 ```
 
-The client check reads all four Modbus data areas, toggles the Auto coil and restores it, then changes the pump-speed setpoint by one register count (0.1 Hz) and restores the original value. It prints PASS only after successful read-back and restoration. Do not stop the server while this check is running.
+The client check reads all four Modbus data areas, toggles the Auto coil and restores it, then changes the pump-speed setpoint by one register count (0.1 Hz) and restores the original value.
 
-Discrete inputs and input registers are configured as read-only data areas. Coils and holding registers are writable. This milestone verifies protocol communication and storage only; it does not execute pump/valve process logic.
+Discrete inputs and input registers are read-only. Coils and holding registers are writable. The server currently stores command-coil writes; process command handling is not yet integrated.
 
 ## Run automated tests
 
-In a second terminal, activate the same virtual environment and run:
+With the virtual environment active:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-The tests cover register-map helpers and initial device configuration. They do not yet prove end-to-end client communication; that will be verified in the next integration step.
+Tests cover register-map helpers, initial device configuration, and the standalone process model. The process-model tests do not require a running Modbus server.
 
 ## Initial device values
 
@@ -93,43 +81,46 @@ The tests cover register-map helpers and initial device configuration. They do n
 | Low-flow setpoint | 5.0 L/min |
 | Tank low threshold | 20.0% |
 | Tank high threshold | 90.0% |
-| Other measurements/status | 0 / False |
 
-These are startup memory values only. Dynamic process simulation and command handling are not implemented yet. In particular, the server currently stores command-coil writes; it does not yet execute or automatically clear momentary requests.
+These are startup memory values. The standalone process model has its own initial state and is not yet synchronized with Modbus device memory.
 
 ## Project structure
 
 ```text
 industrial-water-modbus-simulator/
 ├── docs/
-│   └── modbus-register-map.md
+│   ├── modbus-register-map.md
+│   └── zone01-process-model.md
 ├── src/
 │   ├── __init__.py
 │   ├── client_check.py
 │   ├── main.py
 │   ├── modbus_server.py
+│   ├── process_model.py
 │   └── register_map.py
 ├── tests/
 │   ├── __init__.py
+│   ├── test_process_model.py
 │   ├── test_register_map.py
 │   └── test_server.py
 ├── requirements.txt
 └── README.md
 ```
 
-## Planned development
+## Development roadmap
 
-1. **Register map:** completed.
-2. **Modbus TCP server:** implemented; local client verification pending.
-3. Add the simulated water-process behavior (pump, valve, flow, and tank level).
-4. Add command processing, momentary request handling, setpoint validation, and process-behavior tests.
-5. Connect the simulator to the Node.js Web SCADA and Ignition as independent Modbus TCP clients.
+1. **Register map:** complete.
+2. **Modbus TCP server and client verification:** complete locally.
+3. **Standalone process model:** implemented; local test execution pending.
+4. Add command processing, automatic level control, interlocks, fault handling, and setpoint validation.
+5. Integrate the process model with the Modbus server and publish dynamic measurements/status.
+6. Connect the simulator to the Node.js Web SCADA and Ignition as independent Modbus TCP clients.
 
 ## Development notes
 
-- The local virtual environment is stored in `.venv/` and must not be committed.
-- Python dependencies are recorded in `requirements.txt`.
-- Default endpoint: `127.0.0.1:1502`, Unit ID 1.
+- The local virtual environment is stored in .venv/ and must not be committed.
+- Python dependencies are recorded in requirements.txt.
+- Default endpoint: 127.0.0.1:1502, Unit ID 1.
 - The register map uses zero-based Modbus PDU offsets; conventional reference numbers are documented alongside them.
 - All analog process values are simulated, not physical measurements.
 - The server binds to loopback only by default. Do not expose it to an untrusted network.
