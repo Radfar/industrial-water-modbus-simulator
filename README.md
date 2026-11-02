@@ -10,11 +10,11 @@ This repository hosts an independent simulated field device. Zone 01 models a pu
 
 **Milestone 2 verified:** Modbus TCP server, device memory, and client read/write checks completed locally.
 
-**Milestone 3 in progress:** standalone water-process model implemented with unit tests. It is not yet connected to the Modbus server or command processor.
+**Milestone 3 in progress:** standalone water-process model and command processor implemented with unit tests. Neither is yet connected to the Modbus server.
 
 See:
 - [Zone 01 Modbus TCP Register Map](docs/modbus-register-map.md)
-- [Zone 01 Water Process Model](docs/zone01-process-model.md)
+- [Zone 01 Water Process Model](docs/zone01-process-model.md)\n- [Zone 01 Control Logic](docs/zone01-control-logic.md)
 
 ## Requirements
 
@@ -68,7 +68,7 @@ With the virtual environment active:
 python -m unittest discover -s tests -v
 ```
 
-Tests cover register-map helpers, initial device configuration, and the standalone process model. The process-model tests do not require a running Modbus server.
+Tests cover register-map helpers, initial device configuration, the standalone process model, and the standalone command processor. These unit tests do not require a running Modbus server.
 
 ## Initial device values
 
@@ -93,14 +93,14 @@ industrial-water-modbus-simulator/
 │   └── zone01-process-model.md
 ├── src/
 │   ├── __init__.py
-│   ├── client_check.py
+│   ├── client_check.py\n│   ├── command_processor.py
 │   ├── main.py
 │   ├── modbus_server.py
 │   ├── process_model.py
 │   └── register_map.py
 ├── tests/
 │   ├── __init__.py
-│   ├── test_process_model.py
+│   ├── test_command_processor.py\n│   ├── test_process_model.py
 │   ├── test_register_map.py
 │   └── test_server.py
 ├── requirements.txt
