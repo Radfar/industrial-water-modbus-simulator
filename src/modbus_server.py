@@ -48,6 +48,7 @@ def build_device() -> SimDevice:
                     address=0,
                     values=discrete_inputs,
                     datatype=DataType.BITS,
+                    readonly=True,
                 )
             ],
             [
@@ -62,6 +63,7 @@ def build_device() -> SimDevice:
                     address=0,
                     values=input_registers,
                     datatype=DataType.REGISTERS,
+                    readonly=True,
                 )
             ],
         ),
