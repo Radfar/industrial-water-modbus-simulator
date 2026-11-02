@@ -70,6 +70,7 @@ class CommandProcessor:
         self.low_flow_trip_delay_seconds = float(low_flow_trip_delay_seconds)
         self._manual_run_request = False
         self._auto_run_request = False
+        self._auto_start_inhibited = False
         self._low_flow_elapsed = 0.0
         self._low_flow_fault_latched = False
         self._pump_fault_latched = False
@@ -171,7 +172,9 @@ class CommandProcessor:
         # Mode change clears the demand belonging to the mode being left.
         if auto_selected:
             self._manual_run_request = False
-            if tank_low:
+            if not tank_low:
+                self._auto_start_inhibited = False
+            if tank_low and not self._auto_start_inhibited:
                 self._auto_run_request = True
             elif tank_high:
                 self._auto_run_request = False
@@ -184,13 +187,11 @@ class CommandProcessor:
         if stop_edge:
             self._manual_run_request = False
             self._auto_run_request = False
+            if auto_selected and tank_low:
+                self._auto_start_inhibited = True
 
         active_fault_condition = pump_fault_condition
-        if (
-            reset_edge
-            and not active_fault_condition
-            and flow_lpm >= setpoints.flow_low_lpm
-        ):
+        if reset_edge and not active_fault_condition:
             self._low_flow_fault_latched = False
             self._pump_fault_latched = False
             # Reset must not cause an immediate automatic/manual restart.
