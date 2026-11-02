@@ -2,7 +2,7 @@
 
 **Document ID:** IWM-Z01-CTRL-001  
 **Version:** 0.1  
-**Status:** Initial command processor implemented independently of Modbus
+**Status:** Integrated runtime implemented — local verification pending
 
 ## 1. Purpose
 
