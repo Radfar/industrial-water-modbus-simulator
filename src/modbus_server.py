@@ -86,7 +86,11 @@ async def run_server(host: str = "127.0.0.1", port: int = MODBUS_TCP_PORT) -> No
     print(f"Unit ID: {MODBUS_UNIT_ID}")
     print("Press Ctrl+C to stop the server.")
 
-    runtime = Zone01Runtime(device)
+    # PyModbus compiles SimData into its active simulator memory at server
+    # construction. Bind the process runtime to that live memory, not the
+    # original SimData.values lists.
+    active_device_memory = server.context.devices[MODBUS_UNIT_ID]
+    runtime = Zone01Runtime(device, datastore=active_device_memory)
     runtime_task = asyncio.create_task(runtime.run())
     print("Zone 01 process simulation running (500 ms nominal scan).")
 
