@@ -2,7 +2,7 @@
 
 **Document ID:** IWM-Z01-MODBUS-001  
 **Version:** 0.2  
-**Status:** Server implemented — integration verification pending
+**Status:** Runtime integration implemented — local verification pending
 
 ## 1. Purpose
 
@@ -43,12 +43,12 @@ Coils are read/write Boolean values.
 | 2 | 00003 | `Z01_STOP` | R/W | Stop request |
 | 3 | 00004 | `Z01_FAULT_RESET` | R/W | Fault-reset request |
 
-### Current server behavior
+### Runtime behavior
 
 - `AUTO` is a maintained selection; it is not proof that automatic control is active.
-- The server currently provides protocol-level coil storage only. It does not yet execute process commands or automatically consume/clear the three request coils.
-- A successful Modbus write confirms protocol-level write handling only. It does not prove that the process accepted or completed the requested action.
-- The process-control milestone will implement command handling, pulse consumption, and controller-state feedback.
+- The runtime samples START, STOP, and FAULT_RESET once per scan, then clears those coils. AUTO remains set until the client changes it.
+- The command processor detects rising edges and applies the documented control philosophy.
+- A successful Modbus write confirms protocol-level write handling only. Read the status and feedback bits to determine whether the request was accepted and what the simulated process did.
 
 ## 5. Discrete inputs — status and feedback (1xxxx)
 
@@ -70,7 +70,7 @@ Discrete inputs are read-only Boolean values.
 | 11 | 10012 | `Z01_TANK_HIGH` | Tank high-level condition |
 | 12 | 10013 | `Z01_VALVE_OPEN_FB` | Valve-open status derived from simulated position |
 
-At server startup, all discrete inputs are false except `Z01_PERMISSIVE`, which is initialized true. These are initial memory values, not live process calculations. `RUN_FEEDBACK` is not independent physical feedback.
+At startup, `Z01_PERMISSIVE` is initialized true. The runtime then publishes calculated status on each scan. `RUN_FEEDBACK` is derived from simulated pump frequency greater than zero; it is not independent physical feedback. The `PERMISSIVE` status represents the external permissive combined with setpoint validity.
 
 `COMM_OK` is intentionally not included as a device process bit. Communication availability and data freshness should be determined by each client from connection and polling behavior. `PROCESS_OK` is not a substitute for communication health.
 
@@ -88,7 +88,7 @@ Holding registers are read/write unsigned 16-bit values. Analog setpoints use a 
 
 Initial values are 45.0 Hz, 100.0%, 5.0 L/min, 20.0%, and 90.0%, respectively. These values are startup defaults, not validated operating recommendations.
 
-The current server stores client writes but does not yet enforce engineering limits or the relationship between low and high tank thresholds. Process validation will be added with the control logic. A Modbus register write alone does not bypass the need for process validation.
+The runtime validates these operating ranges: pump frequency 0–50 Hz, valve position 0–100%, low-flow threshold 0–100 L/min, and tank thresholds 0–100% with low below high. Invalid values remove the effective permissive and force the simulated pump output off. A Modbus register write alone does not bypass process validation.
 
 ## 7. Input registers — process measurements (3xxxx)
 
@@ -103,7 +103,7 @@ Input registers are read-only unsigned 16-bit values. Values use a scale factor 
 | 4 | 30005 | `Z01_VALVE` | % | ×10 | 0.0–100.0 |
 | 5 | 30006 | `Z01_PUMP_CURRENT` | A | ×10 | 0.0–100.0 |
 
-At startup, tank level is initialized to 75.0%; the other measurement registers are initialized to zero. The values are simulated memory defaults, not physical sensor readings. The process model will update them in a later milestone.
+The process model starts with tank level at 75.0%; the other measurements start at zero. The runtime updates these registers on every scan. These are simulated values, not physical sensor readings.
 
 ## 8. Data representation and scaling
 
@@ -135,18 +135,19 @@ Implemented:
 3. Initial register and bit values are loaded from the register map.
 4. Unit tests validate device identity, address-space sizes, and startup values.
 
-Pending local integration verification:
+Implemented:
 1. A Modbus TCP client can connect and read each address space.
 2. A client can write the Auto coil and holding-register setpoints.
-3. Discrete inputs and input registers reject client writes.
-4. Node.js and Ignition interpret the same offsets, units, and signal semantics.
+3. Discrete inputs and input registers are configured read-only.
+4. A 500 ms nominal runtime scan connects the command processor, process model, and Modbus memory.
+5. START, STOP, and FAULT_RESET are consumed and cleared after sampling; AUTO remains maintained.
+6. Dynamic process measurements and controller status are published to the input registers and discrete inputs.
+7. Runtime unit tests cover startup, manual start/stop, automatic start, permissive loss, and invalid setpoints.
 
-Not implemented yet:
-- Process simulation and dynamic measurement updates.
-- Start/stop/auto/fault-reset control behavior.
-- Momentary command consumption and clearing.
-- Setpoint engineering validation.
-- Client integration and process-behavior tests.
+Pending local integration verification:
+1. Run the complete Python test suite after pulling the latest commits.
+2. Verify the live Modbus TCP process with a client.
+3. Confirm Node.js Web SCADA and Ignition interpret the same offsets, units, and signal semantics.
 
 ## 11. Change control
 
