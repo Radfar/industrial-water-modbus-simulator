@@ -186,10 +186,12 @@ class CommandProcessor:
             self._auto_run_request = False
 
         active_fault_condition = pump_fault_condition
-        if reset_edge and not active_fault_condition:
-            # A low-flow trip can be reset once flow has recovered to its SP.
-            if flow_lpm >= setpoints.flow_low_lpm:
-                self._low_flow_fault_latched = False
+        if (
+            reset_edge
+            and not active_fault_condition
+            and flow_lpm >= setpoints.flow_low_lpm
+        ):
+            self._low_flow_fault_latched = False
             self._pump_fault_latched = False
             # Reset must not cause an immediate automatic/manual restart.
             self._manual_run_request = False
