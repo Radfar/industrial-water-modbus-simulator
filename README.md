@@ -54,6 +54,24 @@ Press Ctrl+C to stop the server.
 
 The server remains active until you press Ctrl+C.
 
+## Verify Modbus TCP communication
+
+Start the server in one terminal:
+
+```powershell
+python -m src.main
+```
+
+Keep it running. Open a second VS Code terminal, activate the same virtual environment, and run:
+
+```powershell
+python -m src.client_check
+```
+
+The client check reads all four Modbus data areas, toggles the Auto coil and restores it, then changes the pump-speed setpoint by one register count (0.1 Hz) and restores the original value. It prints PASS only after successful read-back and restoration. Do not stop the server while this check is running.
+
+Discrete inputs and input registers are configured as read-only data areas. Coils and holding registers are writable. This milestone verifies protocol communication and storage only; it does not execute pump/valve process logic.
+
 ## Run automated tests
 
 In a second terminal, activate the same virtual environment and run:
@@ -87,6 +105,7 @@ industrial-water-modbus-simulator/
 │   └── modbus-register-map.md
 ├── src/
 │   ├── __init__.py
+│   ├── client_check.py
 │   ├── main.py
 │   ├── modbus_server.py
 │   └── register_map.py
