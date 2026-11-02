@@ -1,7 +1,7 @@
 """Zone 01 runtime: connect control logic, process model, and Modbus memory."""
 
 import asyncio
-import time
+import math
 
 from .command_processor import CommandProcessor, ControlCommands, ControlSetpoints
 from .process_model import WaterProcessModel
@@ -30,10 +30,13 @@ class Zone01Runtime:
         command_processor: CommandProcessor | None = None,
         process_model: WaterProcessModel | None = None,
     ) -> None:
-        if not isinstance(scan_period_seconds, (int, float)) or isinstance(
-            scan_period_seconds, bool
-        ) or scan_period_seconds <= 0:
-            raise ValueError("scan_period_seconds must be greater than zero")
+        if (
+            isinstance(scan_period_seconds, bool)
+            or not isinstance(scan_period_seconds, (int, float))
+            or not math.isfinite(scan_period_seconds)
+            or scan_period_seconds <= 0
+        ):
+            raise ValueError("scan_period_seconds must be finite and greater than zero")
 
         self.scan_period_seconds = float(scan_period_seconds)
         self.command_processor = command_processor or CommandProcessor()
@@ -142,7 +145,8 @@ class Zone01Runtime:
         di[DiscreteInputAddress.Z01_RUN_FEEDBACK] = m.pump_frequency_hz > 0.0
         di[DiscreteInputAddress.Z01_RUNNING] = state.running
         di[DiscreteInputAddress.Z01_FAULT] = state.fault
-        di[DiscreteInputAddress.Z01_PERMISSIVE] = state.permissive
+        # PERMISSIVE is an external input/status point. Do not overwrite it
+        # with setpoint-validation state; doing so could latch it false.
         di[DiscreteInputAddress.Z01_MANUAL] = state.manual
         di[DiscreteInputAddress.Z01_AUTO_ACTIVE] = state.auto_active
         di[DiscreteInputAddress.Z01_FLOW_OK] = state.flow_ok
