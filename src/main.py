@@ -1,12 +1,6 @@
 """Entry point for the Industrial Water Modbus Simulator."""
 
-
-def main() -> None:
-    """Run the application startup check."""
-    print("Industrial Water Modbus Simulator")
-    print("----------------------------------")
-    print("Python application started successfully.")
-    print("Modbus library: PyModbus")
+from .modbus_server import main
 
 
 if __name__ == "__main__":
