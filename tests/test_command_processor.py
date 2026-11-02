@@ -95,6 +95,32 @@ class CommandProcessorTests(unittest.TestCase):
         )
         self.assertFalse(state.running)
 
+
+    def test_auto_stop_at_low_level_inhibits_restart_until_level_recovers(self):
+        self.update(
+            ControlCommands(auto_selected=True), tank_level_percent=10.0
+        )
+        state = self.update(
+            ControlCommands(auto_selected=True, stop_request=True),
+            tank_level_percent=10.0,
+        )
+        self.assertFalse(state.running)
+
+        state = self.update(
+            ControlCommands(auto_selected=True), tank_level_percent=10.0
+        )
+        self.assertFalse(state.running)
+
+        state = self.update(
+            ControlCommands(auto_selected=True), tank_level_percent=21.0
+        )
+        self.assertFalse(state.running)
+
+        state = self.update(
+            ControlCommands(auto_selected=True), tank_level_percent=10.0
+        )
+        self.assertTrue(state.running)
+
     def test_mode_change_to_manual_clears_auto_demand(self):
         self.update(
             ControlCommands(auto_selected=True), tank_level_percent=10.0
@@ -123,13 +149,14 @@ class CommandProcessorTests(unittest.TestCase):
         self.assertTrue(state.fault)
         self.assertTrue(state.low_flow)
 
-    def test_low_flow_fault_requires_recovery_before_reset(self):
+    def test_low_flow_fault_can_be_reset_while_pump_is_stopped(self):
         self.update(ControlCommands(start_request=True), flow_lpm=0.0)
         self.update(flow_lpm=0.0, elapsed_seconds=3.0)
         state = self.update(
             ControlCommands(fault_reset_request=True), flow_lpm=0.0
         )
-        self.assertTrue(state.fault)
+        self.assertFalse(state.fault)
+        self.assertFalse(state.running)
 
     def test_low_flow_fault_can_be_reset_after_flow_recovers(self):
         self.update(ControlCommands(start_request=True), flow_lpm=0.0)
