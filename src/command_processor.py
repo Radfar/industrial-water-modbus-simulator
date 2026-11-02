@@ -76,7 +76,6 @@ class CommandProcessor:
         self._previous_start = False
         self._previous_stop = False
         self._previous_reset = False
-        self._previous_auto = False
 
     @staticmethod
     def _validate_number(name: str, value: float, minimum: float = 0.0) -> None:
@@ -161,7 +160,6 @@ class CommandProcessor:
         self._previous_start = commands.start_request
         self._previous_stop = commands.stop_request
         self._previous_reset = commands.fault_reset_request
-        self._previous_auto = auto_selected
 
         tank_low = tank_level_percent <= setpoints.tank_level_low_percent
         tank_high = tank_level_percent >= setpoints.tank_level_high_percent
@@ -187,17 +185,20 @@ class CommandProcessor:
             self._manual_run_request = False
             self._auto_run_request = False
 
-        fault_before_reset = (
-            self._low_flow_fault_latched or self._pump_fault_latched
-        )
         active_fault_condition = pump_fault_condition
         if reset_edge and not active_fault_condition:
             # A low-flow trip can be reset once flow has recovered to its SP.
             if flow_lpm >= setpoints.flow_low_lpm:
                 self._low_flow_fault_latched = False
             self._pump_fault_latched = False
+            # Reset must not cause an immediate automatic/manual restart.
+            self._manual_run_request = False
+            self._auto_run_request = False
 
         fault = self._low_flow_fault_latched or self._pump_fault_latched
+        if fault:
+            self._manual_run_request = False
+            self._auto_run_request = False
         demand = self._auto_run_request if auto_selected else self._manual_run_request
         running = bool(demand and permissive and not tank_high and not fault)
 
