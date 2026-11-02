@@ -25,45 +25,38 @@ class DeviceConfigurationTests(unittest.TestCase):
         self.assertEqual(self.device.id, MODBUS_UNIT_ID)
 
     def test_all_four_address_spaces_start_at_zero(self) -> None:
-        blocks = self.device.build_device()
-        for block_name in ("c", "d", "h", "i"):
-            with self.subTest(address_space=block_name):
-                self.assertEqual(blocks[block_name][0], 0)
+        for address_space in self.device.simdata:
+            with self.subTest(address_space=address_space):
+                self.assertEqual(address_space[0].address, 0)
 
     def test_address_space_sizes_match_register_map(self) -> None:
-        blocks = self.device.build_device()
+        coils, discrete_inputs, holding_registers, input_registers = self.device.simdata
+        self.assertEqual(len(coils[0].values), max(CoilAddress) + 1)
         self.assertEqual(
-            len(blocks["c"][1]) - 1,
-            max(CoilAddress) + 1,
-        )
-        self.assertEqual(
-            len(blocks["d"][1]) - 1,
+            len(discrete_inputs[0].values),
             max(DiscreteInputAddress) + 1,
         )
         self.assertEqual(
-            len(blocks["h"][1]) - 1,
+            len(holding_registers[0].values),
             max(HoldingRegisterAddress) + 1,
         )
         self.assertEqual(
-            len(blocks["i"][1]) - 1,
+            len(input_registers[0].values),
             max(InputRegisterAddress) + 1,
         )
 
     def test_initial_setpoints_and_tank_level(self) -> None:
-        blocks = self.device.build_device()
-        holding = blocks["h"][1]
-        inputs = blocks["i"][1]
-
-        self.assertEqual(holding[0:5], [450, 1000, 50, 200, 900])
-        self.assertEqual(inputs[0], 750)
+        _, _, holding_registers, input_registers = self.device.simdata
+        self.assertEqual(
+            holding_registers[0].values,
+            [450, 1000, 50, 200, 900],
+        )
+        self.assertEqual(input_registers[0].values[0], 750)
 
     def test_permissive_is_initially_true_and_outputs_are_stopped(self) -> None:
-        blocks = self.device.build_device()
-        coils = blocks["c"][1]
-        discrete_inputs = blocks["d"][1]
-
-        self.assertEqual(coils[0] & 0xFFFF, 0)
-        self.assertTrue(discrete_inputs[0] & 0x0008)
+        coils, discrete_inputs, _, _ = self.device.simdata
+        self.assertEqual(coils[0].values, [False] * 4)
+        self.assertTrue(discrete_inputs[0].values[3])
 
 
 if __name__ == "__main__":
