@@ -15,17 +15,72 @@ from .register_map import (
 )
 
 
+class _BitRegisterView:
+    """List-like view over PyModbus' packed 16-bit coil/discrete-input memory."""
+
+    def __init__(self, block) -> None:
+        start_address, register_count, registers, _flags = block
+        self._start_bit = start_address * 16
+        self._register_count = register_count
+        self._registers = registers
+
+    def __len__(self) -> int:
+        return self._register_count * 16 - self._start_bit
+
+    def __getitem__(self, address: int) -> bool:
+        bit_address = address - self._start_bit
+        if not 0 <= bit_address < self._register_count * 16:
+            raise IndexError(address)
+        register_index, bit_offset = divmod(bit_address, 16)
+        return bool(self._registers[register_index] & (1 << bit_offset))
+
+    def __setitem__(self, address: int, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError("bit value must be bool")
+        bit_address = address - self._start_bit
+        if not 0 <= bit_address < self._register_count * 16:
+            raise IndexError(address)
+        register_index, bit_offset = divmod(bit_address, 16)
+        mask = 1 << bit_offset
+        if value:
+            self._registers[register_index] |= mask
+        else:
+            self._registers[register_index] &= ~mask
+
+
+class _RegisterView:
+    """List-like view over a PyModbus register block."""
+
+    def __init__(self, block) -> None:
+        start_address, _count, registers, _flags = block
+        self._start_address = start_address
+        self._registers = registers
+
+    def __len__(self) -> int:
+        return len(self._registers)
+
+    def __getitem__(self, address: int) -> int:
+        return self._registers[address - self._start_address]
+
+    def __setitem__(self, address: int, value: int) -> None:
+        self._registers[address - self._start_address] = value
+
+
 class Zone01Runtime:
     """Execute one control/process scan and publish it to Modbus data areas.
 
-    The runtime mutates the value lists owned by the PyModbus SimData objects.
-    The process model and command processor remain independent of PyModbus.
+    When attached to a live PyModbus server, the runtime uses views over the
+    server's active simulator memory. PyModbus builds that memory from SimData
+    during server initialization, so mutating SimData.values afterwards would
+    not update the live Modbus data model. The process model and command
+    processor remain independent of PyModbus.
     """
 
     def __init__(
         self,
         device,
         *,
+        datastore=None,
         scan_period_seconds: float = 0.5,
         command_processor: CommandProcessor | None = None,
         process_model: WaterProcessModel | None = None,
@@ -42,11 +97,17 @@ class Zone01Runtime:
         self.command_processor = command_processor or CommandProcessor()
         self.process_model = process_model or WaterProcessModel()
 
-        coils, discrete_inputs, holding_registers, input_registers = device.simdata
-        self.coils = coils[0].values
-        self.discrete_inputs = discrete_inputs[0].values
-        self.holding_registers = holding_registers[0].values
-        self.input_registers = input_registers[0].values
+        if datastore is None:
+            coils, discrete_inputs, holding_registers, input_registers = device.simdata
+            self.coils = coils[0].values
+            self.discrete_inputs = discrete_inputs[0].values
+            self.holding_registers = holding_registers[0].values
+            self.input_registers = input_registers[0].values
+        else:
+            self.coils = _BitRegisterView(datastore.block["c"])
+            self.discrete_inputs = _BitRegisterView(datastore.block["d"])
+            self.holding_registers = _RegisterView(datastore.block["h"])
+            self.input_registers = _RegisterView(datastore.block["i"])
 
         self.state = None
         self.measurements = self.process_model.measurements
