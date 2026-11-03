@@ -22,7 +22,6 @@ class ControlCommands:
     stop_request: bool = False
     fault_reset_request: bool = False
     reenable_request: bool = False
-    clear_manual_request: bool = False
 
 
 @dataclass(frozen=True)
@@ -56,7 +55,7 @@ class CommandProcessor:
     """Apply manual/automatic requests, permissives, and latched fault logic.
 
     Control philosophy:
-    - Manual START latches a run request; STOP clears it and latches the operator stop.
+    - Manual START latches a run request; STOP clears it.
     - In Auto, tank low starts and tank high stops the pump (hysteresis).
     - STOP has priority over START in the same scan.
     - Loss of permissive, high tank level, or any latched fault stops the pump.
@@ -113,7 +112,7 @@ class CommandProcessor:
             raise TypeError("setpoints must be ControlSetpoints")
 
         for name in ("auto_selected", "start_request", "stop_request",
-                     "fault_reset_request", "reenable_request", "clear_manual_request"):
+                     "fault_reset_request", "reenable_request"):
             cls._validate_bool(f"commands.{name}", getattr(commands, name))
         cls._validate_bool("permissive", permissive)
         cls._validate_bool("pump_fault_condition", pump_fault_condition)
@@ -187,9 +186,7 @@ class CommandProcessor:
                 self._auto_run_request = False
         else:
             self._auto_run_request = False
-            if commands.clear_manual_request:
-                self._manual_run_request = False
-            elif start_edge and not self._operator_stop_latched:
+            if start_edge and not self._operator_stop_latched:
                 self._manual_run_request = True
 
         # Re-enable only releases the operator stop latch; it never creates demand.
