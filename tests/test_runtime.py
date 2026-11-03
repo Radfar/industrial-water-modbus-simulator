@@ -74,6 +74,24 @@ class Zone01RuntimeTests(unittest.TestCase):
             0,
         )
 
+    def test_reenable_coil_is_consumed_and_stop_latch_is_published(self):
+        coils = self.device.simdata[0][0].values
+        discrete = self.device.simdata[1][0].values
+        coils[CoilAddress.Z01_START] = True
+        self.runtime.scan()
+        coils[CoilAddress.Z01_STOP] = True
+        state = self.runtime.scan()
+        self.assertTrue(state.operator_stop_latched)
+        self.assertTrue(discrete[DiscreteInputAddress.Z01_OPERATOR_STOP_LATCHED])
+        self.assertFalse(state.running)
+
+        coils[CoilAddress.Z01_REENABLE] = True
+        state = self.runtime.scan()
+        self.assertFalse(coils[CoilAddress.Z01_REENABLE])
+        self.assertFalse(state.operator_stop_latched)
+        self.assertFalse(discrete[DiscreteInputAddress.Z01_OPERATOR_STOP_LATCHED])
+        self.assertFalse(state.running)
+
     def test_auto_mode_starts_when_tank_is_low(self):
         device = build_device()
         runtime = Zone01Runtime(
