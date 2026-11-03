@@ -189,7 +189,7 @@ class CommandProcessor:
             self._auto_run_request = False
             if commands.clear_manual_request:
                 self._manual_run_request = False
-            if start_edge and not self._operator_stop_latched:
+            elif start_edge and not self._operator_stop_latched:
                 self._manual_run_request = True
 
         # Re-enable only releases the operator stop latch; it never creates demand.
