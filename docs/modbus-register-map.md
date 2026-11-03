@@ -1,7 +1,7 @@
 # Zone 01 — Modbus TCP Register Map
 
 **Document ID:** IWM-Z01-MODBUS-001  
-**Version:** 0.3  
+**Version:** 0.2  
 **Status:** Runtime integration implemented — local verification pending
 
 ## 1. Purpose
@@ -42,15 +42,11 @@ Coils are read/write Boolean values.
 | 1 | 00002 | `Z01_START` | R/W | Start request |
 | 2 | 00003 | `Z01_STOP` | R/W | Stop request |
 | 3 | 00004 | `Z01_FAULT_RESET` | R/W | Fault-reset request |
-| 4 | 00005 | `Z01_REENABLE` | R/W | Explicitly release the latched operator stop; does not issue START |
 
 ### Runtime behavior
 
 - `AUTO` is a maintained selection; it is not proof that automatic control is active.
-- The runtime samples START, STOP, FAULT_RESET, and RE-ENABLE once per scan, then clears those request coils. AUTO remains set until the client changes it.
-- STOP sets a controller-owned operator-stop latch. While latched, Manual START and automatic demand cannot run the pump.
-- RE-ENABLE clears the stop latch but does not create a Manual run request. In Auto, if the tank is still at/below the low-level threshold, automatic restart remains inhibited until the level rises above that threshold and subsequently falls to it again.
-- STOP has priority over RE-ENABLE if both requests are sampled in the same scan. FAULT_RESET does not clear the operator-stop latch.
+- The runtime samples START, STOP, and FAULT_RESET once per scan, then clears those coils. AUTO remains set until the client changes it.
 - The command processor detects rising edges and applies the documented control philosophy.
 - A successful Modbus write confirms protocol-level write handling only. Read the status and feedback bits to determine whether the request was accepted and what the simulated process did.
 
@@ -73,7 +69,6 @@ Discrete inputs are read-only Boolean values.
 | 10 | 10011 | `Z01_TANK_LOW` | Tank low-level condition |
 | 11 | 10012 | `Z01_TANK_HIGH` | Tank high-level condition |
 | 12 | 10013 | `Z01_VALVE_OPEN_FB` | Valve-open status derived from simulated position |
-| 13 | 10014 | `Z01_OPERATOR_STOP_LATCHED` | Controller-owned operator stop latch; cleared only by RE-ENABLE |
 
 At startup, `Z01_PERMISSIVE` is initialized true. The runtime then publishes calculated status on each scan. `RUN_FEEDBACK` is derived from simulated pump frequency greater than zero; it is not independent physical feedback. The `PERMISSIVE` reports the external permissive input. Setpoint validity is evaluated separately as an additional internal run condition; invalid setpoints block operation and make `PROCESS_OK` false without overwriting the external permissive point.
 
@@ -125,8 +120,8 @@ The protocol register contains only the scaled number. Signal name, engineering 
 
 The map preserves command/status/feedback separation:
 
-- Commands: `AUTO`, `START`, `STOP`, `FAULT_RESET`, and `RE-ENABLE`.
-- Status and diagnostics: `RUN_FEEDBACK`, `RUNNING`, `FAULT`, `PERMISSIVE`, `MANUAL`, `AUTO_ACTIVE`, `FLOW_OK`, `LOW_FLOW`, `PROCESS_OK`, and `OPERATOR_STOP_LATCHED`.
+- Commands: `AUTO`, `START`, `STOP`, `FAULT_RESET`.
+- Status and diagnostics: `RUN_FEEDBACK`, `RUNNING`, `FAULT`, `PERMISSIVE`, `MANUAL`, `AUTO_ACTIVE`, `FLOW_OK`, `LOW_FLOW`, and `PROCESS_OK`.
 - Process values: `FLOW` and `VALVE`.
 - Zone 01 extensions: tank level, pump speed/frequency/current, pump fault, tank alarms, and equipment setpoints.
 
@@ -145,7 +140,7 @@ Implemented:
 2. A client can write the Auto coil and holding-register setpoints.
 3. Discrete inputs and input registers are configured read-only.
 4. A 500 ms nominal runtime scan connects the command processor, process model, and Modbus memory.
-5. START, STOP, FAULT_RESET, and RE-ENABLE are consumed and cleared after sampling; AUTO remains maintained.
+5. START, STOP, and FAULT_RESET are consumed and cleared after sampling; AUTO remains maintained.
 6. Dynamic process measurements and controller status are published to the input registers and discrete inputs.
 7. Runtime unit tests cover startup, manual start/stop, automatic start, permissive loss, and invalid setpoints.
 
@@ -156,4 +151,4 @@ Pending local integration verification:
 
 ## 11. Change control
 
-This is register-map version 0.3. Existing addresses and meanings are unchanged; the new command and status points are appended at unused offsets. Changes to offsets, signal meanings, access, units, or scaling require a versioned update and corresponding client mapping changes.
+This is register-map version 0.2. Changes to offsets, signal meanings, access, units, or scaling require a versioned update and corresponding client mapping changes.

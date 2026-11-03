@@ -169,10 +169,7 @@ class Zone01Runtime:
             # In Manual, invalid setpoints clear the latched manual request,
             # requiring a fresh START after correction. Auto retains its
             # level-based demand and remains governed by its hysteresis logic.
-            stop_request=(
-                bool(self.coils[CoilAddress.Z01_STOP])
-                or (not setpoints_valid and not bool(self.coils[CoilAddress.Z01_AUTO]))
-            ),
+            stop_request=bool(self.coils[CoilAddress.Z01_STOP]),
             fault_reset_request=bool(self.coils[CoilAddress.Z01_FAULT_RESET]),
             reenable_request=bool(self.coils[CoilAddress.Z01_REENABLE]),
             clear_manual_request=(not setpoints_valid and not bool(self.coils[CoilAddress.Z01_AUTO])),

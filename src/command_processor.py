@@ -21,8 +21,6 @@ class ControlCommands:
     start_request: bool = False
     stop_request: bool = False
     fault_reset_request: bool = False
-    reenable_request: bool = False
-    clear_manual_request: bool = False
 
 
 @dataclass(frozen=True)
@@ -49,7 +47,6 @@ class ControlState:
     tank_high: bool
     flow_ok: bool
     process_ok: bool
-    operator_stop_latched: bool
 
 
 class CommandProcessor:
@@ -80,8 +77,6 @@ class CommandProcessor:
         self._previous_start = False
         self._previous_stop = False
         self._previous_reset = False
-        self._previous_reenable = False
-        self._operator_stop_latched = False
 
     @staticmethod
     def _validate_number(name: str, value: float, minimum: float = 0.0) -> None:
@@ -113,7 +108,7 @@ class CommandProcessor:
             raise TypeError("setpoints must be ControlSetpoints")
 
         for name in ("auto_selected", "start_request", "stop_request",
-                     "fault_reset_request", "reenable_request", "clear_manual_request"):
+                     "fault_reset_request"):
             cls._validate_bool(f"commands.{name}", getattr(commands, name))
         cls._validate_bool("permissive", permissive)
         cls._validate_bool("pump_fault_condition", pump_fault_condition)
@@ -161,13 +156,11 @@ class CommandProcessor:
         start_edge = commands.start_request and not self._previous_start
         stop_edge = commands.stop_request and not self._previous_stop
         reset_edge = commands.fault_reset_request and not self._previous_reset
-        reenable_edge = commands.reenable_request and not self._previous_reenable
         auto_selected = commands.auto_selected
 
         self._previous_start = commands.start_request
         self._previous_stop = commands.stop_request
         self._previous_reset = commands.fault_reset_request
-        self._previous_reenable = commands.reenable_request
 
         tank_low = tank_level_percent <= setpoints.tank_level_low_percent
         tank_high = tank_level_percent >= setpoints.tank_level_high_percent
@@ -187,24 +180,11 @@ class CommandProcessor:
                 self._auto_run_request = False
         else:
             self._auto_run_request = False
-            if commands.clear_manual_request:
-                self._manual_run_request = False
-            elif start_edge and not self._operator_stop_latched:
+            if start_edge:
                 self._manual_run_request = True
 
-        # Re-enable only releases the operator stop latch; it never creates demand.
-        # In Auto, require the tank to recover above the low threshold before
-        # a later low-level condition can create a fresh automatic demand.
-        if reenable_edge:
-            self._operator_stop_latched = False
-            self._manual_run_request = False
-            self._auto_run_request = False
-            if auto_selected and tank_low:
-                self._auto_start_inhibited = True
-
-        # STOP has priority over START and RE-ENABLE in the same scan.
+        # Stop is a dominant operator request in either mode.
         if stop_edge:
-            self._operator_stop_latched = True
             self._manual_run_request = False
             self._auto_run_request = False
             if auto_selected and tank_low:
@@ -219,7 +199,7 @@ class CommandProcessor:
             self._auto_run_request = False
 
         fault = self._low_flow_fault_latched or self._pump_fault_latched
-        if fault or self._operator_stop_latched:
+        if fault:
             self._manual_run_request = False
             self._auto_run_request = False
         demand = self._auto_run_request if auto_selected else self._manual_run_request
@@ -236,7 +216,7 @@ class CommandProcessor:
             self._low_flow_elapsed = 0.0
 
         fault = self._low_flow_fault_latched or self._pump_fault_latched
-        auto_active = auto_selected and permissive and not fault and not self._operator_stop_latched
+        auto_active = auto_selected and permissive and not fault
         flow_ok = running and flow_lpm >= setpoints.flow_low_lpm
         process_ok = permissive and not fault and not tank_high
 
@@ -252,5 +232,4 @@ class CommandProcessor:
             tank_high=tank_high,
             flow_ok=flow_ok,
             process_ok=process_ok,
-            operator_stop_latched=self._operator_stop_latched,
         )
