@@ -55,6 +55,43 @@ class CommandProcessorTests(unittest.TestCase):
         )
         self.assertFalse(state.running)
 
+    def test_stop_latches_in_manual_until_explicit_reenable(self):
+        self.update(ControlCommands(start_request=True))
+        state = self.update(ControlCommands(stop_request=True))
+        self.assertFalse(state.running)
+        self.assertTrue(state.operator_stop_latched)
+        state = self.update(ControlCommands(start_request=True))
+        self.assertFalse(state.running)
+        state = self.update(ControlCommands(reenable_request=True))
+        self.assertFalse(state.running)
+        self.assertFalse(state.operator_stop_latched)
+        self.update(ControlCommands())
+        self.assertTrue(self.update(ControlCommands(start_request=True)).running)
+
+    def test_stop_latch_blocks_auto_until_reenabled_and_level_recovers(self):
+        self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0)
+        state = self.update(ControlCommands(auto_selected=True, stop_request=True), tank_level_percent=10.0)
+        self.assertFalse(state.running)
+        self.assertTrue(state.operator_stop_latched)
+        self.assertFalse(self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0).running)
+        state = self.update(ControlCommands(auto_selected=True, reenable_request=True), tank_level_percent=10.0)
+        self.assertFalse(state.running)
+        self.assertFalse(state.operator_stop_latched)
+        self.assertFalse(self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0).running)
+        self.update(ControlCommands(auto_selected=True), tank_level_percent=21.0)
+        self.assertTrue(self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0).running)
+
+    def test_stop_has_priority_over_reenable(self):
+        state = self.update(ControlCommands(stop_request=True, reenable_request=True))
+        self.assertTrue(state.operator_stop_latched)
+        self.assertFalse(state.running)
+
+    def test_fault_reset_does_not_clear_operator_stop_latch(self):
+        self.update(ControlCommands(stop_request=True))
+        state = self.update(ControlCommands(fault_reset_request=True))
+        self.assertTrue(state.operator_stop_latched)
+        self.assertFalse(state.running)
+
     def test_manual_start_does_not_start_without_permissive(self):
         state = self.update(
             ControlCommands(start_request=True), permissive=False
@@ -96,26 +133,35 @@ class CommandProcessorTests(unittest.TestCase):
         self.assertFalse(state.running)
 
 
-    def test_auto_stop_at_low_level_inhibits_restart_until_level_recovers(self):
-        self.update(
+    def test_auto_stop_at_low_level_requires_reenable_and_level_recovery(self):
+        state = self.update(
             ControlCommands(auto_selected=True), tank_level_percent=10.0
         )
+        self.assertTrue(state.running)
+
         state = self.update(
             ControlCommands(auto_selected=True, stop_request=True),
             tank_level_percent=10.0,
         )
         self.assertFalse(state.running)
+        self.assertTrue(state.operator_stop_latched)
 
-        state = self.update(
-            ControlCommands(auto_selected=True), tank_level_percent=10.0
-        )
-        self.assertFalse(state.running)
-
+        # Tank recovery alone must not clear the operator STOP latch.
         state = self.update(
             ControlCommands(auto_selected=True), tank_level_percent=21.0
         )
         self.assertFalse(state.running)
+        self.assertTrue(state.operator_stop_latched)
 
+        # RE-ENABLE clears the latch but does not immediately restart the pump.
+        state = self.update(
+            ControlCommands(auto_selected=True, reenable_request=True),
+            tank_level_percent=21.0,
+        )
+        self.assertFalse(state.running)
+        self.assertFalse(state.operator_stop_latched)
+
+        # A fresh low-level condition is required for automatic restart.
         state = self.update(
             ControlCommands(auto_selected=True), tank_level_percent=10.0
         )

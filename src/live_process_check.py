@@ -37,8 +37,14 @@ def main() -> None:
                 f"Could not connect to Modbus TCP server at {HOST}:{MODBUS_TCP_PORT}"
             )
 
-        coils = _read(client, client.read_coils, 0, 4).bits[:4]
-        di = _read(client, client.read_discrete_inputs, 0, 13).bits[:13]
+        coils = _read(client, client.read_coils, 0, 5).bits[:5]
+        di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
+        if di[DiscreteInputAddress.Z01_OPERATOR_STOP_LATCHED]:
+            response = client.write_coil(CoilAddress.Z01_REENABLE, True, device_id=MODBUS_UNIT_ID)
+            if response.isError():
+                raise RuntimeError(f"Could not clear previous operator-stop latch: {response}")
+            time.sleep(0.8)
+            di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
         ir = _read(client, client.read_input_registers, 0, 6).registers
 
         original_auto = bool(coils[CoilAddress.Z01_AUTO])
@@ -74,7 +80,7 @@ def main() -> None:
             raise RuntimeError(f"START write failed: {response}")
 
         time.sleep(0.8)
-        run_di = _read(client, client.read_discrete_inputs, 0, 13).bits[:13]
+        run_di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
         run_ir = _read(client, client.read_input_registers, 0, 6).registers
 
         running = bool(run_di[DiscreteInputAddress.Z01_RUNNING])
@@ -97,7 +103,7 @@ def main() -> None:
             raise RuntimeError(f"STOP write failed: {response}")
 
         time.sleep(0.8)
-        stop_di = _read(client, client.read_discrete_inputs, 0, 13).bits[:13]
+        stop_di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
         stop_ir = _read(client, client.read_input_registers, 0, 6).registers
 
         stopped = not bool(stop_di[DiscreteInputAddress.Z01_RUNNING])
@@ -114,7 +120,42 @@ def main() -> None:
 
         if not (stopped and feedback_off and flow_zero and frequency_zero):
             raise RuntimeError("STOP was written, but the process did not reach the stopped state")
-        print("Live STOP/process response: PASS")
+        if not stop_di[DiscreteInputAddress.Z01_OPERATOR_STOP_LATCHED]:
+            raise RuntimeError("STOP did not set the operator-stop latch")
+        print("Live STOP/process response and operator-stop latch: PASS")
+
+        response = client.write_coil(CoilAddress.Z01_START, True, device_id=MODBUS_UNIT_ID)
+        if response.isError():
+            raise RuntimeError(f"Blocked START write failed: {response}")
+        time.sleep(0.8)
+        blocked_di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
+        if blocked_di[DiscreteInputAddress.Z01_RUNNING]:
+            raise RuntimeError("START unexpectedly ran while operator-stop latch was set")
+
+        response = client.write_coil(CoilAddress.Z01_REENABLE, True, device_id=MODBUS_UNIT_ID)
+        if response.isError():
+            raise RuntimeError(f"RE-ENABLE write failed: {response}")
+        time.sleep(0.8)
+        enabled_di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
+        if enabled_di[DiscreteInputAddress.Z01_OPERATOR_STOP_LATCHED]:
+            raise RuntimeError("RE-ENABLE did not clear the operator-stop latch")
+        if enabled_di[DiscreteInputAddress.Z01_RUNNING]:
+            raise RuntimeError("RE-ENABLE unexpectedly started the pump")
+        print("RE-ENABLE clears latch without starting: PASS")
+
+        response = client.write_coil(CoilAddress.Z01_START, True, device_id=MODBUS_UNIT_ID)
+        if response.isError():
+            raise RuntimeError(f"Fresh START after RE-ENABLE failed: {response}")
+        time.sleep(0.8)
+        restarted_di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
+        if not restarted_di[DiscreteInputAddress.Z01_RUNNING]:
+            raise RuntimeError("Fresh START after RE-ENABLE did not run the pump")
+        print("Fresh START after RE-ENABLE: PASS")
+
+        response = client.write_coil(CoilAddress.Z01_STOP, True, device_id=MODBUS_UNIT_ID)
+        if response.isError():
+            raise RuntimeError(f"Final STOP write failed: {response}")
+        time.sleep(0.8)
         print("Live Modbus TCP process check: PASS")
 
     finally:

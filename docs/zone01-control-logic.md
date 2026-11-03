@@ -1,7 +1,7 @@
 # Zone 01 — Control Logic
 
 **Document ID:** IWM-Z01-CTRL-001  
-**Version:** 0.1  
+**Version:** 0.2  
 **Status:** Integrated runtime implemented — local verification pending
 
 ## 1. Purpose
@@ -17,7 +17,9 @@ It is not a safety-rated control design and must not be used as a substitute for
 Manual mode is selected when the AUTO command is false.
 
 - A rising edge on START sets a retained manual run request.
-- A rising edge on STOP clears the manual run request.
+- A rising edge on STOP clears run demand and sets a controller-owned operator-stop latch.
+- While the latch is set, Manual START and automatic demand cannot run the pump.
+- A rising edge on RE-ENABLE clears the latch but does not create a run request. In Manual, a fresh START edge is required.
 - STOP takes priority if START and STOP arrive in the same scan.
 - A held START or STOP input is not repeatedly interpreted; requests are edge-detected.
 - Manual run demand does not override permissives, faults, or the high-tank stop condition.
@@ -29,11 +31,12 @@ Automatic mode is selected when AUTO is true.
 - At or below the low-level setpoint (default 20%), automatic demand is set.
 - At or above the high-level setpoint (default 90%), automatic demand is cleared.
 - Between the thresholds, the previous automatic demand is retained. This is hysteresis.
-- An operator STOP at low level inhibits automatic restart until the tank level rises above the low-level setpoint. The next low-level crossing can then initiate a new automatic run.
+- An operator STOP sets the persistent operator-stop latch. Automatic restart is blocked while it is set.
+- RE-ENABLE clears the latch. If tank level remains at/below the low-level setpoint, automatic restart remains inhibited until level rises above the low-level setpoint and subsequently falls to it again.
 - Switching to Auto clears the manual run request.
 - Switching to Manual clears the automatic run request. A new manual START is required.
 
-AUTO is a mode selection. AUTO_ACTIVE indicates that Auto is selected, the permissive is present, and no latched fault is active.
+AUTO is a mode selection. AUTO_ACTIVE indicates that Auto is selected, the permissive is present, and neither a latched fault nor the operator-stop latch is active.
 
 ## 3. Stop and start conditions
 
@@ -43,10 +46,20 @@ A run demand can produce RUNNING only when all of the following are true:
 - The external permissive input is true.
 - Tank level is below the high-level threshold.
 - No latched low-flow or pump fault is active.
+- The operator-stop latch is clear.
 
 Loss of permissive, high tank level, or a fault stops the simulated pump. The command processor does not itself operate a physical output.
 
-## 4. Fault handling
+## 4. Operator stop latch
+
+- STOP is edge-detected and sets the operator-stop latch in either mode.
+- The latch blocks Manual and Auto run demand without setting the process FAULT status.
+- RE-ENABLE is edge-detected and clears only the operator-stop latch. It is not a START command.
+- STOP has priority if STOP and RE-ENABLE are sampled in the same scan.
+- FAULT_RESET does not clear the operator-stop latch.
+- The latch is held in controller memory only; a simulator process restart initializes it cleared. This is a software testbed behavior, not a safety-rated or nonvolatile shutdown function.
+
+## 5. Fault handling
 
 ### Low-flow protection
 
@@ -64,7 +77,7 @@ FAULT_RESET is edge-detected. A reset is accepted when the external pump-fault c
 
 A reset clears the fault latch but does not create a run request. The operator or automatic sequence must establish a new valid demand.
 
-## 5. Status definitions
+## 6. Status definitions
 
 | Status | Meaning |
 |---|---|
@@ -79,10 +92,11 @@ A reset clears the fault latch but does not create a run request. The operator o
 | TANK_HIGH | Tank level at/above high setpoint |
 | FLOW_OK | RUNNING and flow at/above low-flow setpoint |
 | PROCESS_OK | Permissive true, no fault, tank below high threshold |
+| OPERATOR_STOP_LATCHED | Operator stop latch is set; RE-ENABLE is required before another run request can take effect |
 
 RUNNING is a controller decision, not independent physical run feedback. The simulator must not represent it as proof that a real motor or pump has physically started.
 
-## 6. Initial software interface
+## 7. Initial software interface
 
 The Python module `src/command_processor.py` exposes:
 
@@ -92,10 +106,11 @@ The Python module `src/command_processor.py` exposes:
 
 The caller supplies process measurements, permissive state, external pump-fault condition, and elapsed scan time. The module is independent of PyModbus and the water process model.
 
-## 7. Initial assumptions and limitations
+## 8. Initial assumptions and limitations
 
 - Default low-flow trip delay is 3 seconds.
 - No start-delay, minimum-run-time, minimum-stop-time, or VFD ramp is implemented.
+- The operator-stop latch is volatile and clears on simulator restart; startup retention behavior is not implemented.
 - No source-low condition exists in the current register map.
 - No independent physical run feedback is available. In the integrated simulator, RUN_FEEDBACK is derived from the simulated pump frequency being greater than zero; it is not independent proof from a motor contactor or VFD status input.
 - The runtime validates setpoints against the current simulation ranges (pump frequency 0–50 Hz, valve 0–100%, low-flow threshold 0–100 L/min, and tank thresholds 0–100% with low below high). Invalid setpoints remove the effective permissive and force the simulated pump output off. In Manual, the invalid setpoint also clears the latched manual run request, so a fresh START is required after correction. In Auto, the level-based demand is retained and can resume when the setpoints become valid.

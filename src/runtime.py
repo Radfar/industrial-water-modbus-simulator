@@ -169,17 +169,17 @@ class Zone01Runtime:
             # In Manual, invalid setpoints clear the latched manual request,
             # requiring a fresh START after correction. Auto retains its
             # level-based demand and remains governed by its hysteresis logic.
-            stop_request=(
-                bool(self.coils[CoilAddress.Z01_STOP])
-                or (not setpoints_valid and not bool(self.coils[CoilAddress.Z01_AUTO]))
-            ),
+            stop_request=bool(self.coils[CoilAddress.Z01_STOP]),
             fault_reset_request=bool(self.coils[CoilAddress.Z01_FAULT_RESET]),
+            reenable_request=bool(self.coils[CoilAddress.Z01_REENABLE]),
+            clear_manual_request=(not setpoints_valid and not bool(self.coils[CoilAddress.Z01_AUTO])),
         )
 
         # Momentary requests are consumed once sampled. AUTO remains maintained.
         self.coils[CoilAddress.Z01_START] = False
         self.coils[CoilAddress.Z01_STOP] = False
         self.coils[CoilAddress.Z01_FAULT_RESET] = False
+        self.coils[CoilAddress.Z01_REENABLE] = False
         external_permissive = bool(
             self.discrete_inputs[DiscreteInputAddress.Z01_PERMISSIVE]
         )
@@ -222,6 +222,7 @@ class Zone01Runtime:
         di[DiscreteInputAddress.Z01_PUMP_FAULT] = state.pump_fault
         di[DiscreteInputAddress.Z01_TANK_LOW] = state.tank_low
         di[DiscreteInputAddress.Z01_TANK_HIGH] = state.tank_high
+        di[DiscreteInputAddress.Z01_OPERATOR_STOP_LATCHED] = state.operator_stop_latched
         di[DiscreteInputAddress.Z01_VALVE_OPEN_FB] = (
             m.valve_position_percent > 0.0
         )
