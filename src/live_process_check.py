@@ -80,7 +80,7 @@ def main() -> None:
             raise RuntimeError(f"START write failed: {response}")
 
         time.sleep(0.8)
-        run_di = _read(client, client.read_discrete_inputs, 0, 13).bits[:13]
+        run_di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
         run_ir = _read(client, client.read_input_registers, 0, 6).registers
 
         running = bool(run_di[DiscreteInputAddress.Z01_RUNNING])
@@ -103,7 +103,7 @@ def main() -> None:
             raise RuntimeError(f"STOP write failed: {response}")
 
         time.sleep(0.8)
-        stop_di = _read(client, client.read_discrete_inputs, 0, 13).bits[:13]
+        stop_di = _read(client, client.read_discrete_inputs, 0, 14).bits[:14]
         stop_ir = _read(client, client.read_input_registers, 0, 6).registers
 
         stopped = not bool(stop_di[DiscreteInputAddress.Z01_RUNNING])
