@@ -10,7 +10,7 @@ Zone 01 models a pump transferring water through a control valve into a storage 
 - **Milestone 2 — Modbus TCP server:** implemented and locally verified.
 - **Milestone 3 — Process and control integration:** implemented in the repository; the latest integrated test suite still needs to be run locally.
 
-The 500 ms nominal runtime scan connects the command processor, water-process model, and Modbus memory. START, STOP, and FAULT_RESET are momentary requests consumed by the runtime. AUTO is a maintained mode selection.
+The 500 ms nominal runtime scan connects the command processor, water-process model, and Modbus memory. START, STOP, FAULT_RESET, and RE-ENABLE are momentary requests consumed by the runtime. AUTO is a maintained mode selection. STOP sets a controller-owned operator-stop latch; RE-ENABLE clears it but does not issue START.
 
 ## Documentation
 

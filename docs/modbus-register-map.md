@@ -125,8 +125,8 @@ The protocol register contains only the scaled number. Signal name, engineering 
 
 The map preserves command/status/feedback separation:
 
-- Commands: `AUTO`, `START`, `STOP`, `FAULT_RESET`.
-- Status and diagnostics: `RUN_FEEDBACK`, `RUNNING`, `FAULT`, `PERMISSIVE`, `MANUAL`, `AUTO_ACTIVE`, `FLOW_OK`, `LOW_FLOW`, and `PROCESS_OK`.
+- Commands: `AUTO`, `START`, `STOP`, `FAULT_RESET`, and `RE-ENABLE`.
+- Status and diagnostics: `RUN_FEEDBACK`, `RUNNING`, `FAULT`, `PERMISSIVE`, `MANUAL`, `AUTO_ACTIVE`, `FLOW_OK`, `LOW_FLOW`, `PROCESS_OK`, and `OPERATOR_STOP_LATCHED`.
 - Process values: `FLOW` and `VALVE`.
 - Zone 01 extensions: tank level, pump speed/frequency/current, pump fault, tank alarms, and equipment setpoints.
 
@@ -145,7 +145,7 @@ Implemented:
 2. A client can write the Auto coil and holding-register setpoints.
 3. Discrete inputs and input registers are configured read-only.
 4. A 500 ms nominal runtime scan connects the command processor, process model, and Modbus memory.
-5. START, STOP, and FAULT_RESET are consumed and cleared after sampling; AUTO remains maintained.
+5. START, STOP, FAULT_RESET, and RE-ENABLE are consumed and cleared after sampling; AUTO remains maintained.
 6. Dynamic process measurements and controller status are published to the input registers and discrete inputs.
 7. Runtime unit tests cover startup, manual start/stop, automatic start, permissive loss, and invalid setpoints.
 

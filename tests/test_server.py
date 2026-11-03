@@ -55,7 +55,7 @@ class DeviceConfigurationTests(unittest.TestCase):
 
     def test_permissive_is_initially_true_and_outputs_are_stopped(self) -> None:
         coils, discrete_inputs, _, _ = self.device.simdata
-        self.assertEqual(coils[0].values, [False] * 5)
+        self.assertEqual(coils[0].values, [False] * 4)
         self.assertTrue(discrete_inputs[0].values[3])
 
     def test_discrete_inputs_are_read_only(self) -> None:

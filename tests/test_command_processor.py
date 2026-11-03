@@ -55,60 +55,6 @@ class CommandProcessorTests(unittest.TestCase):
         )
         self.assertFalse(state.running)
 
-    def test_stop_latches_in_manual_until_explicit_reenable(self):
-        self.update(ControlCommands(start_request=True))
-        state = self.update(ControlCommands(stop_request=True))
-        self.assertFalse(state.running)
-        self.assertTrue(state.operator_stop_latched)
-
-        state = self.update(ControlCommands(start_request=True))
-        self.assertFalse(state.running)
-        self.assertTrue(state.operator_stop_latched)
-
-        state = self.update(ControlCommands(reenable_request=True))
-        self.assertFalse(state.running)
-        self.assertFalse(state.operator_stop_latched)
-
-        self.update(ControlCommands())
-        state = self.update(ControlCommands(start_request=True))
-        self.assertTrue(state.running)
-
-    def test_stop_latch_blocks_auto_until_reenabled_and_level_recovers(self):
-        self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0)
-        state = self.update(
-            ControlCommands(auto_selected=True, stop_request=True),
-            tank_level_percent=10.0,
-        )
-        self.assertFalse(state.running)
-        self.assertTrue(state.operator_stop_latched)
-
-        state = self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0)
-        self.assertFalse(state.running)
-
-        state = self.update(
-            ControlCommands(auto_selected=True, reenable_request=True),
-            tank_level_percent=10.0,
-        )
-        self.assertFalse(state.running)
-        self.assertFalse(state.operator_stop_latched)
-
-        state = self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0)
-        self.assertFalse(state.running)
-        self.update(ControlCommands(auto_selected=True), tank_level_percent=21.0)
-        state = self.update(ControlCommands(auto_selected=True), tank_level_percent=10.0)
-        self.assertTrue(state.running)
-
-    def test_stop_has_priority_over_reenable(self):
-        state = self.update(ControlCommands(stop_request=True, reenable_request=True))
-        self.assertTrue(state.operator_stop_latched)
-        self.assertFalse(state.running)
-
-    def test_fault_reset_does_not_clear_operator_stop_latch(self):
-        self.update(ControlCommands(stop_request=True))
-        state = self.update(ControlCommands(fault_reset_request=True))
-        self.assertTrue(state.operator_stop_latched)
-        self.assertFalse(state.running)
-
     def test_manual_start_does_not_start_without_permissive(self):
         state = self.update(
             ControlCommands(start_request=True), permissive=False

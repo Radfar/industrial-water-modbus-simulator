@@ -36,7 +36,7 @@ Automatic mode is selected when AUTO is true.
 - Switching to Auto clears the manual run request.
 - Switching to Manual clears the automatic run request. A new manual START is required.
 
-AUTO is a mode selection. AUTO_ACTIVE indicates that Auto is selected, the permissive is present, and no latched fault is active.
+AUTO is a mode selection. AUTO_ACTIVE indicates that Auto is selected, the permissive is present, and neither a latched fault nor the operator-stop latch is active.
 
 ## 3. Stop and start conditions
 
@@ -46,6 +46,7 @@ A run demand can produce RUNNING only when all of the following are true:
 - The external permissive input is true.
 - Tank level is below the high-level threshold.
 - No latched low-flow or pump fault is active.
+- The operator-stop latch is clear.
 
 Loss of permissive, high tank level, or a fault stops the simulated pump. The command processor does not itself operate a physical output.
 

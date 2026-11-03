@@ -175,6 +175,7 @@ class Zone01Runtime:
             ),
             fault_reset_request=bool(self.coils[CoilAddress.Z01_FAULT_RESET]),
             reenable_request=bool(self.coils[CoilAddress.Z01_REENABLE]),
+            clear_manual_request=(not setpoints_valid and not bool(self.coils[CoilAddress.Z01_AUTO])),
         )
 
         # Momentary requests are consumed once sampled. AUTO remains maintained.

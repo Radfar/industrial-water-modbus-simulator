@@ -22,6 +22,7 @@ class ControlCommands:
     stop_request: bool = False
     fault_reset_request: bool = False
     reenable_request: bool = False
+    clear_manual_request: bool = False
 
 
 @dataclass(frozen=True)
@@ -112,7 +113,7 @@ class CommandProcessor:
             raise TypeError("setpoints must be ControlSetpoints")
 
         for name in ("auto_selected", "start_request", "stop_request",
-                     "fault_reset_request", "reenable_request"):
+                     "fault_reset_request", "reenable_request", "clear_manual_request"):
             cls._validate_bool(f"commands.{name}", getattr(commands, name))
         cls._validate_bool("permissive", permissive)
         cls._validate_bool("pump_fault_condition", pump_fault_condition)
@@ -186,7 +187,9 @@ class CommandProcessor:
                 self._auto_run_request = False
         else:
             self._auto_run_request = False
-            if start_edge and not self._operator_stop_latched:
+            if commands.clear_manual_request:
+                self._manual_run_request = False
+            elif start_edge and not self._operator_stop_latched:
                 self._manual_run_request = True
 
         # Re-enable only releases the operator stop latch; it never creates demand.
