@@ -20,10 +20,10 @@ def main() -> None:
         print(f"Connected to {HOST}:{MODBUS_TCP_PORT}, Unit ID {MODBUS_UNIT_ID}")
 
         reads = (
-            ("Coils", client.read_coils(0, count=4, device_id=MODBUS_UNIT_ID)),
+            ("Coils", client.read_coils(0, count=5, device_id=MODBUS_UNIT_ID)),
             (
                 "Discrete inputs",
-                client.read_discrete_inputs(0, count=13, device_id=MODBUS_UNIT_ID),
+                client.read_discrete_inputs(0, count=14, device_id=MODBUS_UNIT_ID),
             ),
             (
                 "Holding registers",
@@ -39,8 +39,8 @@ def main() -> None:
             if response.isError():
                 raise RuntimeError(f"{label} read failed: {response}")
 
-        print(f"Coils (offsets 0-3): {reads[0][1].bits[:4]}")
-        print(f"Discrete inputs (offsets 0-12): {reads[1][1].bits[:13]}")
+        print(f"Coils (offsets 0-4): {reads[0][1].bits[:5]}")
+        print(f"Discrete inputs (offsets 0-13): {reads[1][1].bits[:14]}")
         print(f"Holding registers (offsets 0-4): {reads[2][1].registers}")
         print(f"Input registers (offsets 0-5): {reads[3][1].registers}")
 

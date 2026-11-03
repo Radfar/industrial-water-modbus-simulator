@@ -21,6 +21,7 @@ class CoilAddress(IntEnum):
     Z01_START = 1
     Z01_STOP = 2
     Z01_FAULT_RESET = 3
+    Z01_REENABLE = 4
 
 
 class DiscreteInputAddress(IntEnum):
@@ -39,6 +40,7 @@ class DiscreteInputAddress(IntEnum):
     Z01_TANK_LOW = 10
     Z01_TANK_HIGH = 11
     Z01_VALVE_OPEN_FB = 12
+    Z01_OPERATOR_STOP_LATCHED = 13
 
 
 class HoldingRegisterAddress(IntEnum):
