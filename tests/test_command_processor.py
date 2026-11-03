@@ -133,26 +133,35 @@ class CommandProcessorTests(unittest.TestCase):
         self.assertFalse(state.running)
 
 
-    def test_auto_stop_at_low_level_inhibits_restart_until_level_recovers(self):
-        self.update(
+    def test_auto_stop_at_low_level_requires_reenable_and_level_recovery(self):
+        state = self.update(
             ControlCommands(auto_selected=True), tank_level_percent=10.0
         )
+        self.assertTrue(state.running)
+
         state = self.update(
             ControlCommands(auto_selected=True, stop_request=True),
             tank_level_percent=10.0,
         )
         self.assertFalse(state.running)
+        self.assertTrue(state.operator_stop_latched)
 
-        state = self.update(
-            ControlCommands(auto_selected=True), tank_level_percent=10.0
-        )
-        self.assertFalse(state.running)
-
+        # Tank recovery alone must not clear the operator STOP latch.
         state = self.update(
             ControlCommands(auto_selected=True), tank_level_percent=21.0
         )
         self.assertFalse(state.running)
+        self.assertTrue(state.operator_stop_latched)
 
+        # RE-ENABLE clears the latch but does not immediately restart the pump.
+        state = self.update(
+            ControlCommands(auto_selected=True, reenable_request=True),
+            tank_level_percent=21.0,
+        )
+        self.assertFalse(state.running)
+        self.assertFalse(state.operator_stop_latched)
+
+        # A fresh low-level condition is required for automatic restart.
         state = self.update(
             ControlCommands(auto_selected=True), tank_level_percent=10.0
         )
