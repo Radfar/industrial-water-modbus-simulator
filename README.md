@@ -22,6 +22,7 @@ The 500 ms nominal runtime scan connects the command processor, water-process mo
 
 - Python 3.15.2 (initial development environment)
 - PyModbus 3.16.1
+- PySide6 6.8 or newer (below version 7) for the desktop GUI
 
 ## Setup
 
@@ -40,7 +41,23 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-## Run the simulator
+## Run the desktop GUI
+
+The PySide6 desktop application provides a live process overview, Modbus communication status, controller status, operator commands, and process setpoint controls. It starts and stops the simulator process itself and connects to that process as a Modbus TCP client.
+
+From the repository root, with the virtual environment active:
+
+```powershell
+python -m gui.main
+```
+
+Use **Start Simulator** in the window to launch the Modbus server. The GUI connects to `127.0.0.1:1502`, Unit ID `1`, and polls the four Modbus data areas every 500 ms. Use **Stop Simulator** to stop the managed server process. Closing the GUI also requests simulator shutdown.
+
+**Do not run `python -m src.main` separately when using the GUI-managed mode.** That would start a second server and cause a port conflict. The command-line mode remains available when you want to run the simulator without the desktop application.
+
+The GUI is an independent Modbus TCP client; it does not duplicate or bypass the simulator's process model. Other clients, including the Node.js Web SCADA, can connect to the same running simulator. Treat the GUI as an engineering/test interface, not a safety-rated operator station.
+
+## Run the simulator from the command line
 
 From the repository root, with the virtual environment active:
 
@@ -101,6 +118,12 @@ industrial-water-modbus-simulator/
 │   ├── modbus-register-map.md
 │   ├── zone01-control-logic.md
 │   └── zone01-process-model.md
+├── gui/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── modbus_worker.py
+│   ├── widgets.py
+│   └── window.py
 ├── src/
 │   ├── __init__.py
 │   ├── client_check.py
@@ -129,7 +152,8 @@ industrial-water-modbus-simulator/
 4. Runtime integration and dynamic Modbus updates — implemented; local verification pending.
 5. Verify live Modbus behavior with a client.
 6. Connect the simulator to the Node.js Web SCADA and Ignition as independent Modbus TCP clients.
-7. Expand the process model with additional equipment behavior and diagnostics as the testbed evolves.
+7. Add and locally validate the PySide6 desktop GUI for simulator operation and Modbus monitoring — implementation added; local validation pending.
+8. Expand the process model with additional equipment behavior and diagnostics as the testbed evolves.
 
 ## Engineering notes
 
