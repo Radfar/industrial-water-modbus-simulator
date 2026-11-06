@@ -18,6 +18,58 @@ The 500 ms nominal runtime scan connects the command processor, water-process mo
 - [Zone 01 Water Process Model](docs/zone01-process-model.md)
 - [Zone 01 Control Logic](docs/zone01-control-logic.md)
 
+## Run the browser-based Web GUI
+
+The Node.js Web GUI provides a browser-based process overview, live telemetry, controller/interlock status, operator commands and setpoint controls. It connects to the same Modbus TCP simulator as the desktop GUI and other independent clients.
+
+Architecture:
+
+```text
+Browser HMI
+    | HTTP REST + WebSocket
+    v
+Node.js / Express
+    | Modbus TCP
+    v
+Python Zone 01 simulator
+127.0.0.1:1502, Unit ID 1
+```
+
+The Python simulator remains the single source of truth for process behavior and control logic. The browser application is a Modbus client; it does not duplicate the process model.
+
+Start the Python simulator in one terminal:
+
+```powershell
+python -m src.main
+```
+
+In a second terminal, start the web application:
+
+```powershell
+cd web
+npm install
+npm start
+```
+
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
+
+Live telemetry is delivered over WebSocket. REST endpoints provide health, process snapshots and whitelisted command/setpoint writes. The desktop GUI, browser GUI and Web SCADA can operate as independent Modbus clients, provided they target the same running simulator.
+
+### Web GUI configuration
+
+| Environment variable | Default | Purpose |
+|---|---:|---|
+| `WEB_HOST` | `127.0.0.1` | Web server bind address |
+| `WEB_PORT` | `3000` | Browser HMI HTTP port |
+| `MODBUS_HOST` | `127.0.0.1` | Simulator host |
+| `MODBUS_PORT` | `1502` | Modbus TCP port |
+| `MODBUS_UNIT_ID` | `1` | Modbus unit identifier |
+| `POLL_MS` | `500` | Telemetry polling interval |
+
+If another application already uses port 3000, set a different `WEB_PORT`, for example `$env:WEB_PORT = "3001"` in PowerShell before running `npm start`.
+
+The browser GUI is an engineering/test interface, not a safety-rated operator station. Keep it on a trusted development network and do not expose it to untrusted networks.
+
 ## Requirements
 
 - Python 3.15.2 (initial development environment)
@@ -124,6 +176,15 @@ industrial-water-modbus-simulator/
 │   ├── modbus_worker.py
 │   ├── widgets.py
 │   └── window.py
+├── web/
+│   ├── public/
+│   │   ├── app.js
+│   │   ├── index.html
+│   │   └── styles.css
+│   ├── modbus-client.js
+│   ├── server.js
+│   ├── package.json
+│   └── README.md
 ├── src/
 │   ├── __init__.py
 │   ├── client_check.py
@@ -152,8 +213,9 @@ industrial-water-modbus-simulator/
 4. Runtime integration and dynamic Modbus updates — implemented; local verification pending.
 5. Verify live Modbus behavior with a client.
 6. Connect the simulator to the Node.js Web SCADA and Ignition as independent Modbus TCP clients.
-7. Add and locally validate the PySide6 desktop GUI for simulator operation and Modbus monitoring — implementation added; local validation pending.
-8. Expand the process model with additional equipment behavior and diagnostics as the testbed evolves.
+7. Add and locally validate the PySide6 desktop GUI for simulator operation and Modbus monitoring — implemented and locally exercised.
+8. Add the Node.js browser Web GUI with REST commands and WebSocket telemetry — implemented; latest compact desktop layout awaits visual confirmation.
+9. Expand the process model with additional equipment behavior and diagnostics as the testbed evolves.
 
 ## Engineering notes
 

@@ -15,3 +15,6 @@ htmlcov/
 
 # Environment variables and secrets
 .env
+
+# Node.js dependencies
+web/node_modules/
