@@ -74,11 +74,23 @@ function render(snapshot) {
     grid.appendChild(item);
   }
 
-  document.querySelector('input[name="pumpSpeed"]').value = fmt(snapshot.setpoints.pumpSpeed);
-  document.querySelector('input[name="valvePosition"]').value = fmt(snapshot.setpoints.valvePosition);
-  document.querySelector('input[name="flowLow"]').value = fmt(snapshot.setpoints.flowLow);
-  document.querySelector('input[name="tankLevelLow"]').value = fmt(snapshot.setpoints.tankLevelLow);
-  document.querySelector('input[name="tankLevelHigh"]').value = fmt(snapshot.setpoints.tankLevelHigh);
+  // WebSocket telemetry arrives every 500 ms. Do not overwrite a setpoint
+  // while the operator is editing it; otherwise the live refresh would put
+  // the previous server value back into the input before Submit is pressed.
+  const setpointFields = {
+    pumpSpeed: snapshot.setpoints.pumpSpeed,
+    valvePosition: snapshot.setpoints.valvePosition,
+    flowLow: snapshot.setpoints.flowLow,
+    tankLevelLow: snapshot.setpoints.tankLevelLow,
+    tankLevelHigh: snapshot.setpoints.tankLevelHigh,
+  };
+
+  for (const [name, value] of Object.entries(setpointFields)) {
+    const input = document.querySelector(`input[name="${name}"]`);
+    if (document.activeElement !== input) {
+      input.value = fmt(value);
+    }
+  }
 
   lastUpdateEl.textContent = `Last update: ${new Date(snapshot.timestamp).toLocaleTimeString()}`;
 }
